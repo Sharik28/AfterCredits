@@ -8,14 +8,12 @@ import {
   Tv,
   ArrowLeft,
   Share2,
-  ShieldAlert,
-  MessageSquare,
 } from "lucide-react";
 import { getShowDetails } from "@/lib/tmdb/client";
 import { getTMDBImageUrl, formatAirYear, formatRating } from "@/lib/utils";
 import { WatchlistButton } from "@/components/shows/WatchlistButton";
 import { SeasonRanker } from "@/components/shows/SeasonRanker";
-import { SpoilerReviewCard } from "@/components/reviews/SpoilerReviewCard";
+import { ShowReviewsSection } from "@/components/reviews/ShowReviewsSection";
 import { MOCK_REVIEWS } from "@/lib/tmdb/mockData";
 
 export const dynamic = "force-dynamic";
@@ -189,31 +187,7 @@ export default async function ShowPage({ params }: ShowPageProps) {
             </div>
 
             {/* Community Reviews Section */}
-            <div className="pt-8 border-t border-white/10 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                    <MessageSquare className="w-5 h-5 text-rose-500" />
-                    <span>Fan Reviews</span>
-                  </h3>
-                  <p className="text-xs text-neutral-400">
-                    Community discussions with built-in spoiler protection.
-                  </p>
-                </div>
-              </div>
-
-              {showReviews.length > 0 ? (
-                <div className="space-y-4">
-                  {showReviews.map((rev) => (
-                    <SpoilerReviewCard key={rev.id} review={rev} />
-                  ))}
-                </div>
-              ) : (
-                <div className="p-8 rounded-2xl bg-[#12141c]/50 border border-white/5 text-center text-xs text-neutral-400">
-                  No community reviews posted for {show.name} yet. Watch it and be the first to log a review!
-                </div>
-              )}
-            </div>
+            <ShowReviewsSection show={show} initialReviews={showReviews} />
           </div>
         </div>
       </div>
