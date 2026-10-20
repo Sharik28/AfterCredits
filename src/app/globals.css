@@ -1,0 +1,75 @@
+@import "tailwindcss";
+
+:root {
+  --bg-cinema-base: #090a0f;
+  --bg-cinema-surface: #12141c;
+  --bg-cinema-elevated: #1a1d28;
+  --border-cinema: rgba(255, 255, 255, 0.08);
+  --border-cinema-focus: rgba(225, 29, 72, 0.4);
+  --accent-crimson: #e11d48;
+  --accent-burgundy: #881337;
+  --accent-amber: #f59e0b;
+  --text-cinema-primary: #f4f4f6;
+  --text-cinema-secondary: #9ca3af;
+  --text-cinema-muted: #6b7280;
+}
+
+body {
+  background-color: var(--bg-cinema-base);
+  color: var(--text-cinema-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  overflow-x: hidden;
+  min-height: 100vh;
+}
+
+/* Custom Cinema Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #090a0f;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2330;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #2b3144;
+}
+
+/* Cinematic backdrop vignette */
+.cinema-vignette {
+  background: linear-gradient(
+    180deg,
+    rgba(9, 10, 15, 0.2) 0%,
+    rgba(9, 10, 15, 0.8) 70%,
+    rgba(9, 10, 15, 1) 100%
+  );
+}
+
+.cinema-radial-vignette {
+  background: radial-gradient(
+    circle at 50% 30%,
+    transparent 20%,
+    rgba(9, 10, 15, 0.6) 70%,
+    rgba(9, 10, 15, 0.95) 100%
+  );
+}
+
+/* Poster shine effect */
+.poster-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease;
+}
+
+.poster-card:hover {
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.8), 0 0 20px -4px rgba(225, 29, 72, 0.2);
+}
+
+/* Spoiler Shroud blur */
+.spoiler-shroud {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(18, 20, 28, 0.85);
+}
