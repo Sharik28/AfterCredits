@@ -216,13 +216,13 @@ erDiagram
 
 ## 6. Implementation Milestones
 
-### Milestone 1: Foundation & Vertical Slice 1 (Current Session)
+### Milestone 1: Foundation & Vertical Slice 1 (Completed)
 - [x] Workspace inspection and Git preparation (`.gitignore`, `.env.example`).
-- [ ] Initialize Next.js App Router with TypeScript strict mode, Tailwind CSS, Lucide icons.
-- [ ] Implement Cinematic Dark Design System (colors, fonts, layout shell with responsive Nav and Footer).
-- [ ] Supabase client architecture (browser client, server client, middleware ready).
-- [ ] TMDB API integration service layer with mock fallback data when API keys are absent.
-- [ ] Complete Vertical Slice 1:
+- [x] Initialize Next.js App Router with TypeScript strict mode, Tailwind CSS, Lucide icons.
+- [x] Implement Cinematic Dark Design System (colors, fonts, layout shell with responsive Nav and Footer).
+- [x] Supabase client architecture (browser client, server client, middleware ready).
+- [x] TMDB API integration service layer with mock fallback data when API keys are absent.
+- [x] Complete Vertical Slice 1:
   - Working Application Shell.
   - Interactive Search on `/discover` with TMDB / mock fallback.
   - Show detail page at `/show/[id]` with real poster/backdrop, seasons list, and cast.

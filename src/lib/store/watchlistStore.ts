@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { WatchStatus, WatchlistItem, TVShow } from "@/types";
-import { createClient, isSupabaseConfigured } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/client";
+import { updateWatchlistAction, getWatchlistAction } from "@/lib/watchlist/actions";
 
 const STORAGE_KEY = "aftercredits_watchlist_v1";
 
@@ -11,10 +12,16 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 
 function emitChange() {
-  listeners.forEach((listener) => listener());
+  listeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (e) {
+      console.error("Watchlist listener error", e);
+    }
+  });
 }
 
-// Local storage helper
+// Local storage helpers
 function getStoredWatchlist(): WatchlistItem[] {
   if (typeof window === "undefined") return [];
   try {
@@ -39,41 +46,47 @@ function saveStoredWatchlist(items: WatchlistItem[]) {
 export function useWatchlist() {
   const [items, setItems] = useState<WatchlistItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    // Check if Supabase is active and has an authenticated session
-    if (isSupabaseConfigured()) {
-      const supabase = createClient();
-      if (supabase) {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          const { data, error } = await supabase
-            .from("watchlist_items")
-            .select("*, show:shows(*)")
-            .eq("user_id", user.id);
+    // 1. Initial immediate load from localStorage for fast zero-latency rendering
+    const local = getStoredWatchlist();
+    if (local.length > 0) {
+      setItems(local);
+    }
 
-          if (!error && data) {
-            setItems(data as WatchlistItem[]);
-            setIsLoading(false);
-            return;
-          }
+    // 2. If Supabase is configured, fetch latest from server action
+    if (isSupabaseConfigured()) {
+      try {
+        const res = await getWatchlistAction();
+        if (res.success && res.items.length > 0) {
+          // Merge / replace with cloud source of truth
+          setItems(res.items);
+          saveStoredWatchlist(res.items);
+          setIsLoading(false);
+          return;
         }
+      } catch (err) {
+        console.warn("Supabase watchlist sync deferred:", err);
       }
     }
 
-    // Fallback to persisted localStorage
-    const local = getStoredWatchlist();
     setItems(local);
     setIsLoading(false);
   }, []);
 
   useEffect(() => {
     refresh();
+
     const handleChange = () => {
-      refresh();
+      const current = getStoredWatchlist();
+      setItems(current);
     };
+
     listeners.add(handleChange);
     window.addEventListener("storage", handleChange);
+
     return () => {
       listeners.delete(handleChange);
       window.removeEventListener("storage", handleChange);
@@ -81,16 +94,25 @@ export function useWatchlist() {
   }, [refresh]);
 
   const updateStatus = useCallback(
-    async (show: TVShow, status: WatchStatus | null) => {
+    async (
+      show: TVShow,
+      status: WatchStatus | null,
+      currentSeason: number = 1,
+      currentEpisode: number = 0
+    ) => {
+      setIsUpdating(true);
+      setLastError(null);
+
       const currentItems = getStoredWatchlist();
       let updated: WatchlistItem[];
+      const now = new Date().toISOString();
 
+      // 1. Optimistic local update
       if (status === null) {
         // Remove from watchlist
         updated = currentItems.filter((i) => i.show_id !== show.id);
       } else {
         const existingIndex = currentItems.findIndex((i) => i.show_id === show.id);
-        const now = new Date().toISOString();
 
         if (existingIndex >= 0) {
           updated = [...currentItems];
@@ -98,6 +120,8 @@ export function useWatchlist() {
             ...updated[existingIndex],
             status,
             show,
+            current_season: currentSeason,
+            current_episode: currentEpisode,
             updated_at: now,
           };
         } else {
@@ -107,8 +131,8 @@ export function useWatchlist() {
             show_id: show.id,
             show,
             status,
-            current_season: 1,
-            current_episode: 0,
+            current_season: currentSeason,
+            current_episode: currentEpisode,
             created_at: now,
             updated_at: now,
           };
@@ -116,49 +140,28 @@ export function useWatchlist() {
         }
       }
 
+      // Save locally and notify all components immediately
       saveStoredWatchlist(updated);
       setItems(updated);
 
-      // Async sync to Supabase if configured & user logged in
-      if (isSupabaseConfigured()) {
-        try {
-          const supabase = createClient();
-          if (supabase) {
-            const { data: { user } } = await supabase.auth.getUser();
-            if (user) {
-              if (status === null) {
-                await supabase
-                  .from("watchlist_items")
-                  .delete()
-                  .eq("user_id", user.id)
-                  .eq("show_id", show.id);
-              } else {
-                // Ensure show exists in Supabase cache
-                await supabase.from("shows").upsert({
-                  id: show.id,
-                  name: show.name,
-                  overview: show.overview,
-                  poster_path: show.poster_path,
-                  backdrop_path: show.backdrop_path,
-                  first_air_date: show.first_air_date,
-                  vote_average: show.vote_average,
-                  number_of_seasons: show.number_of_seasons,
-                  number_of_episodes: show.number_of_episodes,
-                  updated_at: new Date().toISOString(),
-                });
+      // 2. Perform server validation and Supabase cloud persistence
+      try {
+        const res = await updateWatchlistAction(
+          show,
+          status,
+          currentSeason,
+          currentEpisode
+        );
 
-                await supabase.from("watchlist_items").upsert({
-                  user_id: user.id,
-                  show_id: show.id,
-                  status,
-                  updated_at: new Date().toISOString(),
-                });
-              }
-            }
-          }
-        } catch (err) {
-          console.warn("Supabase watchlist sync deferred:", err);
+        if (!res.success && res.error && res.error !== "OFFLINE_MODE" && res.error !== "UNAUTHENTICATED") {
+          console.warn("Watchlist cloud update note:", res.error);
+          setLastError(res.error);
         }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Failed to sync status";
+        console.warn("Watchlist server action deferred:", msg);
+      } finally {
+        setIsUpdating(false);
       }
     },
     []
@@ -172,11 +175,21 @@ export function useWatchlist() {
     [items]
   );
 
+  const getWatchlistItem = useCallback(
+    (showId: number): WatchlistItem | undefined => {
+      return items.find((i) => i.show_id === showId);
+    },
+    [items]
+  );
+
   return {
     items,
     isLoading,
+    isUpdating,
+    lastError,
     updateStatus,
     getShowStatus,
+    getWatchlistItem,
     refresh,
   };
 }

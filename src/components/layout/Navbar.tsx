@@ -14,15 +14,21 @@ import {
   X,
   User,
   Tv,
+  LogOut,
+  ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWatchlist } from "@/lib/store/watchlistStore";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 export function Navbar() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { items: watchlistItems } = useWatchlist();
+  const { user, openAuthModal, signOut, isDemoUser } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -97,7 +103,7 @@ export function Navbar() {
           })}
         </nav>
 
-        {/* Right Section: Search & Profile */}
+        {/* Right Section: Search & Profile / Auth */}
         <div className="hidden sm:flex items-center gap-3">
           <Link
             href="/discover"
@@ -110,15 +116,81 @@ export function Navbar() {
             </kbd>
           </Link>
 
-          <Link
-            href="/u/demo_viewer"
-            className="flex items-center gap-2 p-1 pl-2 pr-3 rounded-full bg-neutral-900/90 border border-white/10 hover:border-white/20 transition-all text-xs font-medium text-neutral-300"
-          >
-            <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-rose-600 to-amber-600 flex items-center justify-center text-[10px] text-white font-bold">
-              DV
+          {user ? (
+            <div className="relative">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center gap-2 p-1 pl-2 pr-3 rounded-full bg-neutral-900/90 border border-white/10 hover:border-white/20 transition-all text-xs font-medium text-neutral-300"
+              >
+                <div className="w-6 h-6 rounded-full bg-gradient-to-tr from-rose-600 to-amber-600 flex items-center justify-center text-[10px] text-white font-bold uppercase">
+                  {user.username.slice(0, 2)}
+                </div>
+                <span className="max-w-24 truncate">{user.displayName || user.username}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+              </button>
+
+              {/* User Dropdown */}
+              {userMenuOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-52 rounded-2xl bg-[#12141c] border border-white/15 p-2 shadow-2xl z-50 text-xs space-y-1 animate-in fade-in zoom-in-95 duration-100"
+                  onClick={() => setUserMenuOpen(false)}
+                >
+                  <div className="px-3 py-2 border-b border-white/5 mb-1">
+                    <p className="font-bold text-white truncate">{user.displayName}</p>
+                    <p className="text-[11px] text-neutral-400 font-mono flex items-center gap-1.5">
+                      <span>@{user.username}</span>
+                      {isDemoUser && (
+                        <span className="text-[9px] bg-amber-500/20 text-amber-300 px-1.5 py-0.2 rounded font-semibold">
+                          Demo
+                        </span>
+                      )}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={`/u/${user.username}`}
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <User className="w-4 h-4 text-rose-400" />
+                    <span>My Profile</span>
+                  </Link>
+
+                  <Link
+                    href="/watchlist"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-xl text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+                  >
+                    <Bookmark className="w-4 h-4 text-rose-400" />
+                    <span>My Watchlist ({watchlistItems.length})</span>
+                  </Link>
+
+                  <div className="pt-1 border-t border-white/5">
+                    <button
+                      onClick={() => signOut()}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Sign Out</span>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
-            <span>Profile</span>
-          </Link>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => openAuthModal("signin")}
+                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => openAuthModal("signup")}
+                className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-md shadow-rose-950/40 transition-all active:scale-95"
+              >
+                Get Started
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Mobile menu button */}
@@ -171,6 +243,62 @@ export function Navbar() {
               </Link>
             );
           })}
+
+          {/* Mobile Auth Section */}
+          <div className="pt-3 mt-2 border-t border-white/10">
+            {user ? (
+              <div className="space-y-2">
+                <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-neutral-900 border border-white/5">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-rose-600 to-amber-600 flex items-center justify-center text-xs text-white font-bold uppercase">
+                    {user.username.slice(0, 2)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-white truncate">{user.displayName}</p>
+                    <p className="text-xs text-neutral-400 font-mono">@{user.username}</p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Link
+                    href={`/u/${user.username}`}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex-1 py-2 text-center text-xs font-semibold rounded-lg bg-white/5 hover:bg-white/10 text-white border border-white/10"
+                  >
+                    View Profile
+                  </Link>
+                  <button
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      signOut();
+                    }}
+                    className="px-3 py-2 text-xs font-semibold rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal("signin");
+                  }}
+                  className="flex-1 py-2 rounded-lg bg-neutral-900 border border-white/10 text-xs font-semibold text-neutral-300 hover:text-white"
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    openAuthModal("signup");
+                  }}
+                  className="flex-1 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-md shadow-rose-950/50"
+                >
+                  Get Started
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </header>

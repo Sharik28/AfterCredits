@@ -17,6 +17,7 @@ export function PosterCard({ show, priority = false }: PosterCardProps) {
   const { getShowStatus, updateStatus } = useWatchlist();
   const currentStatus = getShowStatus(show.id);
   const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [imgError, setImgError] = useState(false);
 
   const posterUrl = getTMDBImageUrl(show.poster_path, "w500");
   const year = formatAirYear(show.first_air_date);
@@ -35,7 +36,7 @@ export function PosterCard({ show, priority = false }: PosterCardProps) {
       {/* Poster Container */}
       <div className="relative aspect-[2/3] w-full rounded-2xl overflow-hidden bg-neutral-900 border border-white/10 poster-card">
         <Link href={`/show/${show.id}`} className="block w-full h-full">
-          {show.poster_path ? (
+          {show.poster_path && !imgError ? (
             <Image
               src={posterUrl}
               alt={show.name}
@@ -43,10 +44,11 @@ export function PosterCard({ show, priority = false }: PosterCardProps) {
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
               className="object-cover transition-transform duration-300 group-hover:scale-105"
               priority={priority}
+              onError={() => setImgError(true)}
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-neutral-800 to-neutral-950">
-              <span className="text-2xl font-black text-neutral-600 mb-2">AC</span>
+              <span className="text-2xl font-black text-rose-500/80 mb-2 font-mono">AC</span>
               <span className="text-xs font-semibold text-neutral-300 line-clamp-3">{show.name}</span>
             </div>
           )}

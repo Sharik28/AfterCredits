@@ -15,6 +15,27 @@ interface SeasonUserRating {
   rank?: number;
 }
 
+function SeasonPosterThumbnail({ src, name }: { src: string; name: string }) {
+  const [error, setError] = useState(false);
+  if (error || !src) {
+    return (
+      <div className="w-full h-full bg-neutral-800 flex items-center justify-center text-[10px] text-neutral-400 font-bold">
+        S
+      </div>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={name}
+      fill
+      sizes="48px"
+      className="object-cover"
+      onError={() => setError(true)}
+    />
+  );
+}
+
 export function SeasonRanker({ show }: SeasonRankerProps) {
   const seasons = show.seasons || [];
   const [ratings, setRatings] = useState<Record<number, SeasonUserRating>>({});
@@ -83,13 +104,7 @@ export function SeasonRanker({ show }: SeasonRankerProps) {
               <div className="flex items-center gap-4 min-w-0">
                 {/* Season mini poster */}
                 <div className="relative w-12 h-16 rounded-lg overflow-hidden bg-neutral-900 border border-white/10 shrink-0">
-                  <Image
-                    src={poster}
-                    alt={season.name}
-                    fill
-                    sizes="48px"
-                    className="object-cover"
-                  />
+                  <SeasonPosterThumbnail src={poster} name={season.name} />
                 </div>
 
                 {/* Season Metadata */}

@@ -13,15 +13,47 @@ import {
   Star,
   Trash2,
   SlidersHorizontal,
+  Cloud,
+  HardDrive,
+  AlertCircle,
+  LogIn,
+  Tv,
 } from "lucide-react";
-import { WatchStatus, WatchlistItem } from "@/types";
+import { WatchStatus, WatchlistItem, TVShow } from "@/types";
 import { useWatchlist } from "@/lib/store/watchlistStore";
+import { useAuth } from "@/lib/auth/AuthContext";
 import { getTMDBImageUrl, formatAirYear, formatRating, formatStatusLabel, cn } from "@/lib/utils";
+
+function WatchlistPosterThumbnail({ show }: { show: TVShow }) {
+  const [error, setError] = useState(false);
+  const poster = getTMDBImageUrl(show.poster_path, "w342");
+
+  if (error || !show.poster_path) {
+    return (
+      <div className="w-full h-full bg-gradient-to-br from-neutral-800 via-neutral-900 to-black flex flex-col items-center justify-center p-1.5 text-center">
+        <Tv className="w-5 h-5 text-rose-500 mb-1" />
+        <span className="text-[9px] font-bold text-neutral-300 line-clamp-2 leading-tight">{show.name}</span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={poster}
+      alt={show.name}
+      fill
+      sizes="80px"
+      onError={() => setError(true)}
+      className="object-cover group-hover:scale-105 transition-transform"
+    />
+  );
+}
 
 type FilterTab = "all" | WatchStatus;
 
 export default function WatchlistPage() {
-  const { items, isLoading, updateStatus } = useWatchlist();
+  const { items, isLoading, lastError, updateStatus } = useWatchlist();
+  const { user, openAuthModal, isSupabaseAvailable, isDemoUser } = useAuth();
   const [activeTab, setActiveTab] = useState<FilterTab>("all");
 
   const tabCounts = {
@@ -64,14 +96,63 @@ export default function WatchlistPage() {
           </p>
         </div>
 
-        <Link
-          href="/discover"
-          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/10 transition-colors self-start sm:self-auto"
-        >
-          <Compass className="w-3.5 h-3.5 text-rose-400" />
-          <span>Add More Shows</span>
-        </Link>
+        <div className="flex items-center gap-3">
+          {/* Storage status badge */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 border border-white/10 text-xs text-neutral-400 font-mono">
+            {user && isSupabaseAvailable && !isDemoUser ? (
+              <>
+                <Cloud className="w-3.5 h-3.5 text-emerald-400" />
+                <span className="text-emerald-300">Cloud Synced</span>
+              </>
+            ) : (
+              <>
+                <HardDrive className="w-3.5 h-3.5 text-amber-400" />
+                <span>Local Storage</span>
+              </>
+            )}
+          </div>
+
+          <Link
+            href="/discover"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold border border-white/10 transition-colors"
+          >
+            <Compass className="w-3.5 h-3.5 text-rose-400" />
+            <span>Add More Shows</span>
+          </Link>
+        </div>
       </div>
+
+      {/* Unauthenticated Sync Banner */}
+      {!user && (
+        <div className="p-4 rounded-2xl bg-neutral-900/80 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-3 text-neutral-300">
+            <div className="p-2 rounded-xl bg-rose-600/20 text-rose-400 shrink-0">
+              <Bookmark className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-bold text-white block">Offline Guest Session</span>
+              <span className="text-neutral-400">
+                Your queue is securely saved in this browser. Sign in or create an account to sync across devices.
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={() => openAuthModal("signin")}
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto shrink-0"
+          >
+            <LogIn className="w-3.5 h-3.5" />
+            <span>Sign In / Sync</span>
+          </button>
+        </div>
+      )}
+
+      {/* Error Banner */}
+      {lastError && (
+        <div className="p-3.5 rounded-2xl bg-red-500/15 border border-red-500/30 text-red-300 text-xs flex items-center gap-2.5">
+          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+          <span>{lastError}</span>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b border-white/10 overflow-x-auto pb-3 scrollbar-none">
@@ -129,13 +210,7 @@ export default function WatchlistPage() {
                   href={`/show/${show.id}`}
                   className="relative w-20 aspect-[2/3] rounded-xl overflow-hidden bg-neutral-900 border border-white/10 shrink-0"
                 >
-                  <Image
-                    src={poster}
-                    alt={show.name}
-                    fill
-                    sizes="80px"
-                    className="object-cover group-hover:scale-105 transition-transform"
-                  />
+                  <WatchlistPosterThumbnail show={show} />
                 </Link>
 
                 {/* Details */}
@@ -152,6 +227,7 @@ export default function WatchlistPage() {
                         onClick={() => updateStatus(show, null)}
                         className="text-neutral-500 hover:text-red-400 p-1 -mt-1 -mr-1 transition-colors"
                         title="Remove from watchlist"
+                        aria-label={`Remove ${show.name} from watchlist`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -180,7 +256,7 @@ export default function WatchlistPage() {
                       value={item.status}
                       onChange={(e) => updateStatus(show, e.target.value as WatchStatus)}
                       aria-label={`Change status for ${show.name}`}
-                      className="bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-rose-300 font-medium focus:outline-none focus:border-rose-500"
+                      className="bg-neutral-900 border border-white/10 rounded-lg px-2 py-1 text-xs text-rose-300 font-medium focus:outline-none focus:border-rose-500 cursor-pointer"
                     >
                       <option value="want_to_watch">Want to Watch</option>
                       <option value="watching">Watching</option>
